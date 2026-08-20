@@ -11,6 +11,14 @@ permissions:
   issues: write
 
 jobs:
+  started:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report run start
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh issue comment 2 --body "### CI run started\n\nCommit: ${{ github.sha }}"
+
   build:
     strategy:
       fail-fast: false
