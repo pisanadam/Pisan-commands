@@ -6,6 +6,10 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   build:
     strategy:
@@ -26,7 +30,31 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.5.1'
-      - run: gradle :${{ matrix.project }}:build --stacktrace
+      - name: Build ${{ matrix.project }}
+        id: gradle-build
+        shell: bash
+        run: |
+          set +e
+          gradle :${{ matrix.project }}:build --stacktrace 2>&1 | tee build.log
+          status=${PIPESTATUS[0]}
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit "$status"
+      - name: Report build failure
+        if: failure() && steps.gradle-build.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          {
+            echo "### Build failure: ${{ matrix.project }} / Java ${{ matrix.java }}"
+            echo
+            echo "Commit: ${{ github.sha }}"
+            echo
+            echo '```text'
+            tail -n 180 build.log
+            echo '```'
+          } > ci-comment.md
+          gh issue comment 2 --body-file ci-comment.md
       - uses: actions/upload-artifact@v4
         with:
           name: pisan-${{ matrix.project }}
