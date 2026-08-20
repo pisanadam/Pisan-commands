@@ -123,7 +123,30 @@ jobs:
         with:
           name: pisan-${{ matrix.family }}
           path: artifacts
-      - run: |
+      - name: Smoke test Minecraft ${{ matrix.mc }}
+        id: smoke-test
+        shell: bash
+        run: |
           JAR="$(find artifacts -name '*-mc*.jar' ! -name '*-sources.jar' | head -1)"
           chmod +x ./scripts/smoke-test.sh
-          ./scripts/smoke-test.sh '${{ matrix.mc }}' "$JAR"
+          set +e
+          ./scripts/smoke-test.sh '${{ matrix.mc }}' "$JAR" 2>&1 | tee smoke.log
+          status=${PIPESTATUS[0]}
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit "$status"
+      - name: Report smoke failure
+        if: failure() && steps.smoke-test.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          {
+            echo "### Smoke failure: Minecraft ${{ matrix.mc }} / ${{ matrix.family }} / Java ${{ matrix.java }}"
+            echo
+            echo "Commit: ${{ github.sha }}"
+            echo
+            echo '```text'
+            tail -n 180 smoke.log
+            echo '```'
+          } > ci-comment.md
+          gh issue comment 2 --body-file ci-comment.md
