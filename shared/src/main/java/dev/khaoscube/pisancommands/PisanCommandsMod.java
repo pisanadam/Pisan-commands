@@ -9,6 +9,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.tree.CommandNode;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.ResourceArgument;
@@ -34,12 +35,12 @@ public final class PisanCommandsMod implements ModInitializer {
     @Override
     public void onInitialize() {
         CONFIG.load();
-        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> register(dispatcher, registryAccess));
+        CommandRegistrationCallback.EVENT.register((dispatcher, buildContext, environment) -> register(dispatcher, buildContext));
         LOGGER.info("Pisan Commands Fabric loaded. Minecart max speed: {} blocks/s", CONFIG.getMinecartSpeed());
     }
 
-    private static void register(CommandDispatcher<CommandSourceStack> dispatcher, net.minecraft.core.RegistryAccess registryAccess) {
-        registerEnchant(dispatcher, registryAccess);
+    private static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext buildContext) {
+        registerEnchant(dispatcher, buildContext);
         registerRename(dispatcher);
         registerGive(dispatcher);
         registerSummon(dispatcher);
@@ -47,16 +48,16 @@ public final class PisanCommandsMod implements ModInitializer {
         registerManagement(dispatcher);
     }
 
-    private static void registerEnchant(CommandDispatcher<CommandSourceStack> dispatcher, net.minecraft.core.RegistryAccess registryAccess) {
+    private static void registerEnchant(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext buildContext) {
         var root = Commands.literal("pisanenchant").requires(PisanCommandsMod::isAdmin);
         for (String action : new String[]{"add", "edit", "auto"}) {
             root.then(Commands.literal(action)
-                    .then(Commands.argument("enchantment", ResourceArgument.resource(registryAccess, Registries.ENCHANTMENT))
+                    .then(Commands.argument("enchantment", ResourceArgument.resource(buildContext, Registries.ENCHANTMENT))
                             .then(Commands.argument("level", IntegerArgumentType.integer(0, 32767))
                                     .executes(ctx -> enchant(ctx, action, true)))));
         }
         root.then(Commands.literal("remove")
-                .then(Commands.argument("enchantment", ResourceArgument.resource(registryAccess, Registries.ENCHANTMENT))
+                .then(Commands.argument("enchantment", ResourceArgument.resource(buildContext, Registries.ENCHANTMENT))
                         .executes(ctx -> enchant(ctx, "remove", false))));
         var node = dispatcher.register(root);
         dispatcher.register(Commands.literal("pe").requires(PisanCommandsMod::isAdmin).redirect(node));
