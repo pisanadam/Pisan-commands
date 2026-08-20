@@ -1,0 +1,33 @@
+plugins {
+    id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
+}
+
+base {
+    archivesName = "pisan-commands-${project.mod_version}-mc1.21.1-1.21.11"
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.legacy_minecraft_version}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.legacy_fabric_api_version}"
+}
+
+sourceSets.main.java.srcDir rootProject.file('shared/src/main/java')
+
+processResources {
+    inputs.property 'version', project.mod_version
+    filesMatching('fabric.mod.json') {
+        expand 'version': project.mod_version
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 21
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+    withSourcesJar()
+}

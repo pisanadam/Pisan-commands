@@ -1,0 +1,9 @@
+allprojects {
+    group = project.group
+    version = project.mod_version
+
+    repositories {
+        maven { url = 'https://maven.fabricmc.net/' }
+        mavenCentral()
+    }
+}

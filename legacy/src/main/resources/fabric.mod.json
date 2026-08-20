@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "pisan_commands",
+  "version": "${version}",
+  "name": "Pisan Commands",
+  "description": "Fabric server administration commands, unsafe enchant/rename helpers and configurable minecart speed.",
+  "authors": ["KhaosCube", "pisanadam"],
+  "environment": "server",
+  "entrypoints": {
+    "main": ["dev.khaoscube.pisancommands.PisanCommandsMod"]
+  },
+  "mixins": ["pisan_commands.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.18.4",
+    "minecraft": ">=1.21.1 <=1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
