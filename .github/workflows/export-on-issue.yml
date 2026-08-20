@@ -1,0 +1,69 @@
+name: Export JARs on issue
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  build:
+    if: startsWith(github.event.issue.title, '[BUILD JARS]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.5.1'
+      - name: Build legacy and modern
+        id: build
+        shell: bash
+        run: |
+          set +e
+          gradle :legacy:build :modern:build --stacktrace 2>&1 | tee build.log
+          status=${PIPESTATUS[0]}
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit "$status"
+      - name: Report failure
+        if: failure() && steps.build.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo '### JAR build failed'
+            echo
+            echo '```text'
+            tail -n 220 build.log
+            echo '```'
+          } > /tmp/comment.md
+          gh issue comment ${{ github.event.issue.number }} --body-file /tmp/comment.md
+      - name: Export JARs to build-output branch
+        if: success()
+        run: |
+          rm -rf /tmp/dist && mkdir -p /tmp/dist
+          find legacy/build/libs -maxdepth 1 -name '*-mc*.jar' ! -name '*-sources.jar' -exec cp {} /tmp/dist/ \;
+          find modern/build/libs -maxdepth 1 -name '*-mc*.jar' ! -name '*-sources.jar' -exec cp {} /tmp/dist/ \;
+          git fetch origin
+          git checkout --orphan build-output-temp
+          git rm -rf .
+          mkdir -p dist
+          cp /tmp/dist/*.jar dist/
+          printf 'Built from %s\n' '${{ github.sha }}' > BUILD_INFO.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -f dist/*.jar BUILD_INFO.txt
+          git commit -m 'build: export Fabric JARs'
+          git push -f origin HEAD:build-output
+      - name: Report success
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh issue comment ${{ github.event.issue.number }} --body '### JAR build succeeded\n\nThe two runtime JARs were exported to the `build-output` branch under `dist/`.'
