@@ -151,12 +151,19 @@ jobs:
           } > ci-comment.md
           gh issue comment 2 --body-file ci-comment.md
 
-  verified:
+  summary:
+    if: always()
     needs: [build, smoke]
     runs-on: ubuntu-latest
     steps:
-      - name: Report full matrix success
+      - name: Report matrix result
         env:
           GH_TOKEN: ${{ github.token }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          SMOKE_RESULT: ${{ needs.smoke.result }}
         run: |
-          gh issue comment 2 --body "### Full compatibility matrix passed\n\nCommit: ${{ github.sha }}\n\nBoth JAR families built successfully and all 15 dedicated-server smoke tests passed: Minecraft 1.21.1 through 1.21.11, plus 26.1, 26.1.1, 26.1.2 and 26.2."
+          if [[ "$BUILD_RESULT" == "success" && "$SMOKE_RESULT" == "success" ]]; then
+            gh issue comment 2 --body "### Full compatibility matrix passed\n\nCommit: ${{ github.sha }}\n\nBuild: **$BUILD_RESULT**\nSmoke: **$SMOKE_RESULT**\n\nBoth JAR families built successfully and all 15 dedicated-server smoke tests passed: Minecraft 1.21.1 through 1.21.11, plus 26.1, 26.1.1, 26.1.2 and 26.2."
+          else
+            gh issue comment 2 --body "### Compatibility matrix summary\n\nCommit: ${{ github.sha }}\n\nBuild: **$BUILD_RESULT**\nSmoke: **$SMOKE_RESULT**\n\nSee failure comments above for any captured Gradle/server logs."
+          fi
