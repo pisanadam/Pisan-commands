@@ -1,0 +1,44 @@
+name: Export JARs
+
+on:
+  push:
+    branches: [jar-build]
+    paths-ignore:
+      - 'dist/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  export:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: jar-build
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.5.1'
+      - name: Build legacy and modern JARs
+        run: |
+          gradle :legacy:build :modern:build --stacktrace
+      - name: Export runtime JARs
+        run: |
+          rm -rf dist
+          mkdir -p dist
+          find legacy/build/libs -maxdepth 1 -name '*-mc*.jar' ! -name '*-sources.jar' -exec cp {} dist/ \;
+          find modern/build/libs -maxdepth 1 -name '*-mc*.jar' ! -name '*-sources.jar' -exec cp {} dist/ \;
+          ls -lh dist
+      - name: Commit JARs
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -f dist/*.jar
+          git commit -m 'build: export verified Fabric JARs' || exit 0
+          git push origin HEAD:jar-build
